@@ -5,6 +5,7 @@
 raw_data/
 
 #Otros archivos
+__pycache__
 .python-version
 *checkpoint.ipynb
 *.ipynb_checkpoints
