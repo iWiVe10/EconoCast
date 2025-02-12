@@ -1,2 +1,15 @@
+#Entorno
+.env
+
+#Data
 raw_data/
+
+#Otros archivos
 .python-version
+
+#Extensiones
+.csv
+.xls
+.xlsx
+.zip
+.gz
