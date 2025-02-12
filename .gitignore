@@ -6,6 +6,8 @@ raw_data/
 
 #Otros archivos
 .python-version
+*checkpoint.ipynb
+*.ipynb_checkpoints
 
 #Extensiones
 .csv
