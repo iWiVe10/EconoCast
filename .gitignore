@@ -1,9 +1,6 @@
 #Entorno
 .env
 
-#Data
-raw_data/
-
 #Otros archivos
 __pycache__
 .python-version
@@ -11,8 +8,5 @@ __pycache__
 *.ipynb_checkpoints
 
 #Extensiones
-.csv
-.xls
-.xlsx
 .zip
 .gz
