@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import numpy as np
+from econocast.interface.main import pred
 
 app = FastAPI()
 
@@ -17,3 +18,7 @@ app.add_middleware(
 @app.get("/")
 def root():
     return { 'greeting': 'Hello EconoCast' }
+
+@app.get("/predict")
+def root():
+    return pred()
