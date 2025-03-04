@@ -19,6 +19,6 @@ app.add_middleware(
 def root():
     return { 'greeting': 'Hello EconoCast' }
 
-@app.get("/predict")
-def root():
-    return pred()
+@app.get("/predict/")
+def predict(steps: int = 24):
+    return pred(steps)

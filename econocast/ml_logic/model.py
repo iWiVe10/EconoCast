@@ -1,61 +1,96 @@
-import tensorflow as tf
+import pandas as pd
 import numpy as np
 from econocast.params import *
+from statsmodels.tsa.statespace.sarimax import SARIMAX
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 
-def build_model(input_shape):
+def build_model(df_preprocess):
     """Contruncion del modelo"""
     print("\n⌛ Construyendo modelo")
-    model = tf.keras.models.Sequential([
-         tf.keras.layers.LSTM(50, return_sequences=True, input_shape=input_shape),
-         tf.keras.layers.Dropout(0.2),
-         tf.keras.layers.LSTM(50),
-         tf.keras.layers.Dropout(0.2),
-         tf.keras.layers.Dense(1, activation='linear')
-    ])
+
+    # Definir variables independientes (exógenas) y la variable objetivo
+    exogenous_vars = EXOGENOUS
+    target_var = TARGET
+
+    df_model = df_preprocess.dropna(subset=[target_var])  # Eliminar filas con NaN en el target
+
+    # Definir datos de entrenamiento
+    y = df_model.set_index("Fecha")[target_var]  # Establecer la fecha como índice
+    X = df_model.set_index("Fecha")[exogenous_vars]  # Establecer la fecha como índice en X también
+
+    # Definir datos de entrenamiento
+    # y = df_model[target_var]
+    # X = df_model[exogenous_vars]
+
+    y = y.astype(float)
+    X = X.replace({',': ''}, regex=True).astype(float)
 
     print("\n✅ Modelo construido")
 
-    print("\n⌛ Compilando modelo")
-    model.compile(optimizer='adam', loss='mse', metrics=['mae', 'mse'])
-    print("\n✅ Modelo compilado: adam y mse")
+    return X, y
 
-    return model
 
-def create_sequences(df_scaled, seq_length=18):
-    """Creacion de secuencia"""
-    print(f'\n⌛ Creando secuencias de {seq_length} meses')
-    X, y = [], []
-    for i in range(len(df_scaled) - seq_length):
-        X.append(df_scaled.iloc[i:i+seq_length].values)
-        y.append(df_scaled.iloc[i+seq_length][TARGET])
 
-    print("\n✅ Secuencias creadas")
-    return np.array(X), np.array(y)
-
-def train_model(X_train, y_train, X_test, y_test):
+def train_model(df_preprocess):
     """Entrena un modelo con redes neuronales."""
-    model = build_model((X_train.shape[1], X_train.shape[2]))
+    # Construir modelo
+    X, y = build_model(df_preprocess)
 
     print("\n⌛ Entrenando modelo")
-    early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
-    model.fit(X_train, y_train, epochs=50, batch_size=16, validation_data=(X_test, y_test), callbacks=[early_stopping])
+    # Ajustar el modelo SARIMAX (ARIMA con variables exógenas)
+    model_arimax = SARIMAX(y, exog=X, order=(0,1,2), seasonal_order=(2,0,2,12), enforce_stationarity=False, enforce_invertibility=False)
+    model_arimax_fit = model_arimax.fit(disp=False)
+
     print("\n✅ Modelo entrenado")
 
-    return model
+        # Predicciones en el mismo conjunto de entrenamiento
+    y_pred = model_arimax_fit.fittedvalues  # Predicciones del modelo en los datos de entrenamiento
 
-def evaluate_model(model, X_test, y_test):
-    """Evalúa el modelo."""
-    print("\n⌛ Evaluando modelo")
-    loss, mae, mse = model.evaluate(X_test, y_test, verbose=1)
-    print("\n✅ Modelo evaluado")
+    # Calcular métricas
+    mae = mean_absolute_error(y, y_pred)
+    mse = mean_squared_error(y, y_pred)
+    rmse = np.sqrt(mse)
+    r2 = r2_score(y, y_pred)
 
-    return loss, mae, mse
+    print("\n📊 Evaluación del Modelo SARIMAX")
+    print(f"🔹 MAE  (Error Absoluto Medio): {mae:.4f}")
+    print(f"🔹 MSE  (Error Cuadrático Medio): {mse:.4f}")
+    print(f"🔹 RMSE (Raíz del Error Cuadrático Medio): {rmse:.4f}")
+    print(f"🔹 R² Score: {r2:.4f}")
 
-def predict_model(model, input_data):
+    # Mostrar resumen del modelo
+    print("\n📌 Resumen del modelo:")
+    print(model_arimax_fit.summary())
+
+
+    return model_arimax_fit
+
+
+
+def predict_model(model, steps):
     """Genera predicciones con el modelo entrenado."""
     print("\n⌛ Prediciendo valor")
-    response = model.predict(input_data)
-    print("\n✅ Prediccion realizada")
-    print(response)
-    return response
+
+    # Realizar predicción para los próximos meses
+    forecast_steps = steps
+    ultima_fecha = pd.to_datetime(model.model.data.orig_endog.index.max())  # Asegura que es una fecha
+    future_dates = pd.date_range(start=ultima_fecha, periods=forecast_steps+1, freq="MS")[1:]
+
+    # Repetir las últimas observaciones de las variables exógenas para el período futuro
+    X_last = model.model.exog[-1, :]
+    X_future = pd.DataFrame(np.tile(X_last, (forecast_steps, 1)), columns=EXOGENOUS)
+
+    # Predicción de inflación mensual con ARIMAX
+    forecast_arimax = model.forecast(steps=forecast_steps, exog=X_future)
+
+    # Crear un DataFrame con los resultados
+    df_forecast_arimax = pd.DataFrame({"Fecha": future_dates, "Prediccion_inflacion_mensual": forecast_arimax})
+
+    print(df_forecast_arimax.head())
+
+    json_forecast = df_forecast_arimax.to_json(orient="records", date_format="iso")
+
+    print("\n✅ Predicción realizada")
+
+    return json_forecast
