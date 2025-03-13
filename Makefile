@@ -16,13 +16,10 @@ run_preprocess_data:
 run_train_model:
 	python -c 'from econocast.interface.main import train; train()'
 
-# Evaluacion
-run_evaluate_model:
-	python -c 'from econocast.interface.main import evaluate; evaluate()'
 
 # Predic
 run_pred_model:
-	python -c 'from econocast.interface.main import pred; pred()'
+	python -c 'from econocast.interface.main import pred; pred(24)'
 
 run_api:
 	uvicorn econocast.api.fast:app --reload

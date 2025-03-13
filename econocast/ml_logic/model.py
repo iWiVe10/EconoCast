@@ -39,13 +39,23 @@ def train_model(df_preprocess):
 
     print("\n⌛ Entrenando modelo")
     # Ajustar el modelo SARIMAX (ARIMA con variables exógenas)
-    model_arimax = SARIMAX(y, exog=X, order=(0,1,2), seasonal_order=(2,0,2,12), enforce_stationarity=False, enforce_invertibility=False)
-    model_arimax_fit = model_arimax.fit(disp=False)
+    #model_arimax = SARIMAX(y, exog=X, order=(0,1,2), seasonal_order=(2,0,2,12), enforce_stationarity=False, enforce_invertibility=False)
+    sarimax_model = SARIMAX(
+        endog=y,
+        exog=X,
+        order=(2,0,0),
+        seasonal_order=(1, 0, 2, 12),
+        enforce_stationarity=False,
+        enforce_invertibility=False
+    )
+    # model_arimax_fit = model_arimax.fit(disp=False)
+    sarimax_results = sarimax_model.fit(disp=False)
+
 
     print("\n✅ Modelo entrenado")
 
-        # Predicciones en el mismo conjunto de entrenamiento
-    y_pred = model_arimax_fit.fittedvalues  # Predicciones del modelo en los datos de entrenamiento
+    # Predicciones en el mismo conjunto de entrenamiento
+    y_pred = sarimax_results.fittedvalues  # Predicciones del modelo en los datos de entrenamiento
 
     # Calcular métricas
     mae = mean_absolute_error(y, y_pred)
@@ -61,10 +71,10 @@ def train_model(df_preprocess):
 
     # Mostrar resumen del modelo
     print("\n📌 Resumen del modelo:")
-    print(model_arimax_fit.summary())
+    print(sarimax_results.summary())
 
 
-    return model_arimax_fit
+    return sarimax_results
 
 
 
